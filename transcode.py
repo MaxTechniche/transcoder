@@ -85,6 +85,8 @@ def remove_file(filepath):
         os.remove(filepath)
     except PermissionError:
         print("File currently in use by another proccess.")
+    except FileNotFoundError:
+        pass
 
 
 def copy_metadata(old_file, new_file):
@@ -94,7 +96,8 @@ def copy_metadata(old_file, new_file):
 
 
 for dirpath, dirs, files in os.walk(args.target):
-    print(dirpath)
+    if "#recycle" in dirpath:
+        continue
     for filename in files:
         if args.stop_time:
             hour = stop_time[0] - int(time.localtime()[3])
