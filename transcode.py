@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import time
 import sys
@@ -6,7 +7,7 @@ import datetime as dt
 
 parser = argparse.ArgumentParser(description="Handbrake Transcoding")
 parser.add_argument(
-    "-hb-path",
+    "--hb-path",
     required=False,
     default=os.path.join(os.getcwd(), "HandBrakeCLI.exe"),
     nargs=1,
@@ -51,7 +52,7 @@ parser.add_argument(
     type=int,
     nargs="?",
     dest="hours",
-    help="The number of hours the program should run. HH:MM",
+    help="The number of hours the program should run. (0-)",
 )
 
 args = parser.parse_args()
