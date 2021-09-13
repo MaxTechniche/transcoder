@@ -65,12 +65,11 @@ if args.stop_time:
         )
 
 preset_file = os.path.join(os.getcwd(), "handbrake-preset.json")
+postfix = "-transcoded.mp4"
 
 base_dir = os.getcwd()
 
-video_extentions = "mp4,ts,mov,mkv,avi,vob,flv,mpg,3g2,3gp,wmv,m4v,mpeg,f4v,m2ts".split(
-    ","
-)
+video_extentions = "mp4,ts,mov,mkv,avi,vob,flv,mpg,3g2,wmv,m4v,mpeg,f4v,m2ts".split(",")
 
 start_time = time.time()
 
@@ -99,43 +98,53 @@ def copy_metadata(old_file, new_file):
 for dirpath, dirs, files in os.walk(args.target):
     if "#recycle" in dirpath:
         continue
+
     for filename in files:
+
         if args.stop_time:
             hour = stop_time[0] - int(time.localtime()[3])
             minute = stop_time[1] - int(time.localtime()[4]) + (hour * 60)
             if minute <= 0:
                 print(*info, sep="\n")
                 exit()
+
         if args.hours:
             if (time.time() - start_time) / 3600 >= args.hours:
                 print(*info, sep="\n")
                 exit()
+
         filepath = dirpath + os.sep + filename
         name, ext = os.path.splitext(filepath)
-        new_filepath = name + "-transcoded.mp4"
+        new_filepath = name + postfix
 
         if ext[1:].lower() not in video_extentions:
             continue
-        if os.path.exists(name + "-transcoded.mp4"):
+
+        if os.path.exists(name + postfix):
             remove_file(filepath)
             continue
 
-        if filename.endswith("-transcoded.mp4"):
+        if filename.endswith(postfix):
             if os.path.exists(name[:-2] + ext):
                 remove_file(name[:-2] + ext)
             continue
 
         try:
+
             os.system(
-                f'{args.hb_path} -i "{filepath}" -o "{name}-transcoded.mp4" --preset-import-file {preset_file}'
+                f'{args.hb_path} -i "{filepath}" -o "{name + postfix}" --preset-import-file {preset_file}'
             )
             copy_metadata(filepath, new_filepath)
+
             if os.path.exists(new_filepath):
                 remove_file(filepath)
                 remove_file(new_filepath + "_original")
+
             info.append(f"{new_filepath} transcoded successfully")
+
         except FileNotFoundError:
             pass
+
         except Exception as e:
             info.append(e)
             print(*info, sep="\n")
