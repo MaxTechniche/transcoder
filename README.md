@@ -2,9 +2,9 @@
 
 ## Info and Background
 
-My dad records a LOT of videos, so a few years ago I got him a NAS. But because of financial problems, we have to sell the NAS.
+My dad records a LOT of videos, so a few years ago I got him a NAS.
 
-I needed a way to reduce the size of videos on the NAS to be able to store them on some cheaper external hard drives (copy).
+I needed a way to reduce the size of videos on the NAS to be able to store more of them.
 Going through with HandBrake and manually selecting files or folders would take FOREVER, so I wrote this script to run through the desired folder and automatically transcode video files.
 
 ## Requirements
