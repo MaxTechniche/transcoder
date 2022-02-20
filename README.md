@@ -16,6 +16,8 @@ Both are included within this repo.
 
 ## Usage
 
+Currently, only the windows amd version is in the repo. If you need something other than that, download from the official [Handbrake website](https://handbrake.fr/downloads2.php)
+
 ```bash
 python transcode.py <target-folder> [-r] [-hb-path] [-e] [-s] [--hours]
 ```
