@@ -44,3 +44,8 @@ The preset file is 720p 128bit audio. You can open the file to look at more of i
 
 Let me know if I should add/change something.
 Good luck!
+
+## TODO
+
+- Add platform check and ask user to install required programs
+- Change to system installs of programs. If it's unable to find them, check the folder, else return exception.
