@@ -7,14 +7,14 @@ import datetime as dt
 
 SECONDS_IN_DAY = 60 * 60 * 24
 
-def get_handbrake_path():
-    if os.
+# def get_handbrake_path():
+#     if os.
 
 parser = argparse.ArgumentParser(description="Handbrake Transcoding")
 parser.add_argument(
     "--hb-path",
     required=False,
-    default=get_handbrake_path(), # os.path.join(os.getcwd(), "HandBrakeCLI.exe"),
+    default=os.path.join(os.getcwd(), "HandBrakeCLI.exe"),
     nargs=1,
     dest="hb_path",
     help="Path to CLI HandBrake file",
