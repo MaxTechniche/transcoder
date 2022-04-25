@@ -2,19 +2,32 @@
 import os
 import time
 import sys
+from shutil import which
+import subprocess
+import platform
 import argparse
 import datetime as dt
 
 SECONDS_IN_DAY = 60 * 60 * 24
 
-# def get_handbrake_path():
-#     if os.
+def get_handbrake_path():
+    if platform.system() == "Darwin":
+        return os.path.join(os.getcwd(), "HandBrakeCLI")
+    else:
+        return os.path.join(os.getcwd(), "HandBrakeCLI.exe")
+    
+def get_exiftool_path():
+    if platform.system() == "Darwin":
+        if which("exiftool"):
+            return "exiftool"
+    else:
+        return os.path.join(os.getcwd(), "exiftool.exe")
 
 parser = argparse.ArgumentParser(description="Handbrake Transcoding")
 parser.add_argument(
     "--hb-path",
     required=False,
-    default=os.path.join(os.getcwd(), "HandBrakeCLI.exe"),
+    default=get_handbrake_path(),
     nargs=1,
     dest="hb_path",
     help="Path to CLI HandBrake file",
@@ -36,7 +49,7 @@ parser.add_argument(
     "-e",
     "--exiftool-path",
     required=False,
-    default=os.path.join(os.getcwd(), "exiftool.exe"),
+    default=get_exiftool_path(),
     nargs=1,
     dest="exiftool_path",
     help="Path to exiftool for metadata copying.",
@@ -90,7 +103,7 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-
+print(args.exiftool_path)
 preset_file = args.preset_file
 postfix = args.postfix + ".mp4"
 
@@ -136,7 +149,7 @@ stop_time = calculate_stop_time(args)
 info = []
 
 if not os.path.exists(args.exiftool_path):
-    if not args.no_exif:
+    if args.no_exif:
         print("ExifTool file path required")
         exit()
 
@@ -157,8 +170,8 @@ def remove_file(filepath):
 
 
 def copy_metadata(old_file, new_file):
-    exiftool_path = args.exiftool_path
-    os.system(f'{exiftool_path} -TagsFromFile "{old_file}" "{new_file}"')
+    subprocess.call([args.exiftool_path, '-TagsFromFile', old_file, new_file])
+    # os.system(f'{exiftool_path} -TagsFromFile "{old_file}" "{new_file}"')
     return
 
 
@@ -190,9 +203,10 @@ for dirpath, dirs, files in os.walk(args.target):
 
         try:
 
-            os.system(
-                f'{args.hb_path} -i "{filepath}" -o "{args.prefix + name + postfix}" --preset-import-file {preset_file}'
-            )
+            subprocess.call([args.hb_path, '-i', filepath, '-o', args.prefix + name + postfix, '--preset-import-file', preset_file])
+            # os.system(
+            #     f'{args.hb_path} -i "{filepath}" -o "{args.prefix + name + postfix}" --preset-import-file {preset_file}'
+            # )
             if not args.no_exif:
                 copy_metadata(filepath, new_filepath)
 
