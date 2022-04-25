@@ -1,15 +1,20 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import os
 import time
 import sys
 import argparse
 import datetime as dt
 
+SECONDS_IN_DAY = 60 * 60 * 24
+
+def get_handbrake_path():
+    if os.
+
 parser = argparse.ArgumentParser(description="Handbrake Transcoding")
 parser.add_argument(
     "--hb-path",
     required=False,
-    default=os.path.join(os.getcwd(), "HandBrakeCLI.exe"),
+    default=get_handbrake_path(), # os.path.join(os.getcwd(), "HandBrakeCLI.exe"),
     nargs=1,
     dest="hb_path",
     help="Path to CLI HandBrake file",
@@ -43,41 +48,103 @@ parser.add_argument(
     default=None,
     nargs="?",
     dest="stop_time",
-    help="The time you want the program to stop. (00:00 - 23:59)",
+    help="The time you want the program to stop 24hr time. (00:00 - 23:59)",
 )
 parser.add_argument(
-    "--hours",
+    "--run-time",
     required=False,
     default=None,
-    type=int,
     nargs="?",
-    dest="hours",
-    help="The number of hours the program should run. (0-)",
+    dest="run_time",
+    help="The number of hours and/or minutes the program should run. (0+:0-59) OR (0-) for only minutes if you wish to not calculate.",
+)
+parser.add_argument(
+    "--no-exif",
+    required=False,
+    default=False,
+    action="store_true",
+    dest="no_exif",
+    help="Add this argument if you wish to not use exif",
+)
+parser.add_argument(
+    "-j",
+    "--json",
+    required=False,
+    default=os.path.join(os.getcwd(), "handbrake-preset.json"),
+    dest="preset_file",
+    help="Path to the preset file",
+)
+parser.add_argument(
+    "--prefix",
+    required=False,
+    default="",
+    dest="prefix",
+    help="String that you wish to use for the prefix.",
+)
+parser.add_argument(
+    "--postfix",
+    required=False,
+    default="-transcoded",
+    dest="postfix",
+    help="String that you wish to use for the postfix.",
 )
 
 args = parser.parse_args()
 
-if args.stop_time:
-    stop_time = list(map(int, args.stop_time.split(":")))
-    if stop_time[0] < 0 or stop_time[0] > 23 or stop_time[1] < 0 or stop_time[1] > 59:
-        raise argparse.ArgumentTypeError(
-            "%s is an invalid time input." % ":".join([str(x) for x in stop_time])
-        )
-
-preset_file = os.path.join(os.getcwd(), "handbrake-preset.json")
-postfix = "-transcoded.mp4"
+preset_file = args.preset_file
+postfix = args.postfix + ".mp4"
 
 base_dir = os.getcwd()
 
 video_extentions = "mp4,ts,mov,mkv,avi,vob,flv,mpg,3g2,wmv,m4v,mpeg,f4v,m2ts".split(",")
 
-start_time = time.time()
+start_time = dt.datetime.today()
+
+
+def calculate_stop_time(args):
+    if not args.stop_time and not args.run_time:
+        return
+    if args.stop_time:
+        stop_time = list(map(int, args.stop_time.split(":")))
+        if not (0 <= stop_time[0] < 24) or not (0 <= stop_time[1] < 60):
+            raise argparse.ArgumentTypeError(
+                "%s is an invalid time input." % ":".join([str(x) for x in stop_time])
+            )
+        stop_time = start_time.replace(hour=stop_time[0], minute=stop_time[1])
+        if (stop_time - start_time).total_seconds() < 0:
+            stop_time = stop_time + dt.timedelta(days=1)
+    if args.run_time:
+        a = list(map(int, args.run_time.split(":")))
+        if len(a) == 1:
+            run_time = start_time + dt.timedelta(minutes=a)
+        elif len(a) == 2:
+            if a[1] > 59:
+                raise argparse.ArgumentTypeError(
+                    f"{a[0]}:{a[1]} is an invalid time input."
+                )
+            run_time = start_time + dt.timedelta(hours=a[0], minutes=a[1])
+        else:
+            raise argparse.ArgumentTypeError(f"{a[0]}:{a[1]} is an invalid time input.")
+    if args.stop_time and args.run_time:
+        stop_time = min(stop_time, run_time)
+
+    return stop_time
+
+
+stop_time = calculate_stop_time(args)
 
 info = []
 
 if not os.path.exists(args.exiftool_path):
-    print("ExifTool path required")
-    exit()
+    if not args.no_exif:
+        print("ExifTool file path required")
+        exit()
+
+
+def check_stop(start_time, stop_time):
+    if stop_time < dt.datetime.today():
+        print("Stoping due to stop time")
+        exit()
 
 
 def remove_file(filepath):
@@ -101,23 +168,15 @@ for dirpath, dirs, files in os.walk(args.target):
 
     for filename in files:
 
-        if args.stop_time:
-            hour = stop_time[0] - int(time.localtime()[3])
-            minute = stop_time[1] - int(time.localtime()[4]) + (hour * 60)
-            if minute <= 0:
-                print(*info, sep="\n")
-                exit()
-
-        if args.hours:
-            if (time.time() - start_time) / 3600 >= args.hours:
-                print(*info, sep="\n")
-                exit()
+        if stop_time:
+            check_stop(start_time, stop_time)
 
         filepath = dirpath + os.sep + filename
         name, ext = os.path.splitext(filepath)
-        new_filepath = name + postfix
+        new_filepath = args.prefix + name + postfix
 
         if ext[1:].lower() not in video_extentions:
+            print(f"Skipping '{name + ext}' due to unknown extention.")
             continue
 
         if os.path.exists(name + postfix):
@@ -132,9 +191,10 @@ for dirpath, dirs, files in os.walk(args.target):
         try:
 
             os.system(
-                f'{args.hb_path} -i "{filepath}" -o "{name + postfix}" --preset-import-file {preset_file}'
+                f'{args.hb_path} -i "{filepath}" -o "{args.prefix + name + postfix}" --preset-import-file {preset_file}'
             )
-            copy_metadata(filepath, new_filepath)
+            if not args.no_exif:
+                copy_metadata(filepath, new_filepath)
 
             if os.path.exists(new_filepath):
                 remove_file(filepath)
@@ -145,11 +205,6 @@ for dirpath, dirs, files in os.walk(args.target):
         except FileNotFoundError:
             pass
 
-        except Exception as e:
-            info.append(e)
-            print(*info, sep="\n")
-            raise e
-
         except KeyboardInterrupt:
             print("KEYBOARD INTERUPT!!")
             print("MAKING SURE FILE IS SAFELY HANDLED")
@@ -159,6 +214,11 @@ for dirpath, dirs, files in os.walk(args.target):
                 print("Removed unfinished transcoded file!")
             print("FILE WAS SAFELY HANDLED")
             raise KeyboardInterrupt("FILE WAS SAFELY HANDLED!")
+
+        except Exception as e:
+            info.append(e)
+            print(*info, sep="\n")
+            raise e
 
     if not args.recursive:
         break
